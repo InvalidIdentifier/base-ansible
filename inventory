@@ -1,0 +1,7 @@
+
+[basenode]
+192.168.4.10
+[basenode:vars]
+ansible_ssh_user=user
+ansible_ssh_private_key_file=~/.ssh/id_ed25519
+ansible_ssh_common_args='-o StrictHostKeyChecking=no'

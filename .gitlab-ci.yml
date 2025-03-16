@@ -1,0 +1,44 @@
+workflow:
+  name: 'base-ansible'
+
+stages:
+  - install_docker
+  - send_notification
+
+before_script:
+  - |
+    # create ssh 
+    mkdir -p ~/.ssh
+
+    eval $(ssh-agent -s)
+
+    cp "$SSH_PRIV_KEY_ED25519_FILE" ~/.ssh/id_ed25519 && chmod 400 ~/.ssh/id_ed25519
+    cp "$SSH_PUB_KEY_ED25519_FILE" ~/.ssh/id_ed25519.pub
+
+    ssh-add ~/.ssh/id_ed25519
+
+    chmod 700 ~/.ssh
+
+install_docker:
+  stage: install_docker
+  image: registry.${DOMAIN}/glrunner:ansible
+  script:
+    - |
+      ####  node containerdeployment ####
+      
+      export PROXMOX_URL_241=$PROXMOX_URL_241
+      export PROXMOX_USER=$PROXMOX_USER
+      export PROXMOX_TOKEN_ID=$PROXMOX_TOKEN_ID
+      export PROXMOX_TOKEN_SECRET=$PROXMOX_TOKEN_SECRET
+
+      ANSIBLE_CONFIG=/${CI_BUILDS_DIR}/${CI_PROJECT_NAMESPACE}/${CI_PROJECT_NAME}/ansible.cfg ansible-playbook playbooks/main.yml -i inventory
+
+send_notification:
+  stage: send_notification
+  image: registry.${DOMAIN}/glrunner:base
+  script:
+    - |
+      ####  send notifications ####
+      curl -H "X-Tags: robot" -u :$NTFY_TOKEN -d "Pipeline - $CI_PIPELINE_NAME - was successfull" https://notify.${DOMAIN}/pipelines
+  needs: 
+    - install_docker
