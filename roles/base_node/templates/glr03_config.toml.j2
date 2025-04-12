@@ -1,0 +1,31 @@
+concurrent = 1
+check_interval = 0
+shutdown_timeout = 0
+
+[session_server]
+  session_timeout = 1800
+
+[[runners]]
+  name = "glrun03.{{ domain }}"
+  url = "http://git.{{ domain }}"
+  id = 6
+  token = "{{ glrun03_token }}"
+  token_obtained_at = 2024-01-05T11:10:07Z
+  token_expires_at = 0001-01-01T00:00:00Z
+  executor = "docker"
+  clone_url = "http://git.{{ domain }}"
+  [runners.cache]
+    MaxUploadedArchiveSize = 0
+  [runners.docker]
+    tls_verify = false
+    image = "docker:git"
+    privileged = true
+    disable_entrypoint_overwrite = false
+    oom_kill_disable = false
+    disable_cache = false
+    volumes = ["/cache"]
+    shm_size = 0
+    network_mtu = 0
+    dns = ["192.168.0.1"]
+    network_mode = "web"
+    volumes = ["/var/run/docker.sock:/var/run/docker.sock", "/cache"]

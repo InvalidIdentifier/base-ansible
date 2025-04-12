@@ -1,7 +1,8 @@
 ---
-- name: prep server
+- name: prep base server
   hosts: basenode
   gather_facts: true
   become: true
   roles:
-    - role: base_docker_node
+    - role: docker_common_setup
+    - role: base_node

@@ -1,0 +1,9 @@
+---
+domain: "{{ lookup('env', 'DOMAIN') }}"
+domain_old: "{{ lookup('env', 'DOMAIN_OLD') }}"
+glrun01_token: "{{ lookup('env', 'GLRUN01_TOKEN') }}"
+glrun02_token: "{{ lookup('env', 'GLRUN02_TOKEN') }}"
+glrun03_token: "{{ lookup('env', 'GLRUN03_TOKEN') }}"
+glrun10_token: "{{ lookup('env', 'GLRUN10_TOKEN') }}"
+registry_htpasswd: "{{ lookup('env', 'REGISTRY_HTPASSWD') }}"
+vlan_infra: "{{ lookup('env', 'VLAN_INFRA') }}"

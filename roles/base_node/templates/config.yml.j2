@@ -1,0 +1,56 @@
+server:
+  http_listen_port: 9080
+  grpc_listen_port: 0
+
+positions:
+  filename: /tmp/positions.yaml
+
+clients:
+  - url: http://loki.{{ domain }}:3100/loki/api/v1/push
+
+scrape_configs:
+- job_name: {{ ansible_nodename }}_traefik_traefik_log
+  static_configs:
+  - targets:
+      - localhost
+    labels:
+      job: traefik_traefik_log_{{ ansible_nodename }}
+      __path__: /opt/logs/traefik/traefik.log
+
+- job_name: {{ ansible_nodename }}_traefik_access_logs
+  static_configs:
+  - targets:
+      - localhost
+    labels:
+      job: traefik_access_log_{{ ansible_nodename }}
+      __path__: /opt/logs/traefik/access.log
+
+- job_name: {{ ansible_nodename }}_dockerlogs
+  docker_sd_configs:
+    - host: "unix:///var/run/docker.sock"
+      refresh_interval: 15s
+      filters:
+        - name: label
+          values: ["com.docker.compose.project=homelab"]
+  relabel_configs:
+    - source_labels: ['__meta_docker_container_name']
+      regex: '/(.*)'
+      target_label: 'container'
+
+- job_name: {{ ansible_nodename }}_journal
+  journal:
+    json: false
+    max_age: 12h
+    path: /var/log/journal
+    labels:
+      job: systemd-journal_{{ ansible_nodename }}
+  relabel_configs:
+    - source_labels: ["__journal__systemd_unit"]
+      target_label: "unit"
+    - source_labels: ["__journal__hostname"]
+      target_label: host
+    - source_labels: ["__journal_priority_keyword"]
+      target_label: level
+    - source_labels: ["__journal_syslog_identifier"]
+      target_label: syslog_identifier
+

@@ -2,3 +2,9 @@
 collections:
   - name: community.general
   - name: ansible.posix
+
+roles:
+  - name: docker_common_setup
+    src: git+https://github.com/InvalidIdentifier/ansible-role-docker-common-setup.git
+    version: main
+    scm: git

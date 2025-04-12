@@ -1,0 +1,379 @@
+name: homelab
+
+services:
+
+### Reverse Proxy ###
+
+  traefik010:
+    image: traefik:v2.11
+    container_name: traefik010
+    hostname: traefik010.${DOMAIN}
+    environment:
+      - TZ=Europe/Berlin
+      - CF_DNS_API_TOKEN=${TRAEFIK_CF_DNS_API_TOKEN}
+    command:
+      - "--api.dashboard=true"
+      - "--api.debug=true"
+      - "--accesslog.filePath=/etc/traefik/access.log"
+      - "--accesslog.bufferingsize=100"
+      - "--accesslog.fields.defaultmode=keep"
+      - "--accesslog.fields.names.ClientUsername=drop"
+      - "--accesslog.fields.headers.defaultmode=keep"
+      - "--log.filePath=/etc/traefik/traefik.log"
+      - "--log.level=DEBUG"
+      - "--entrypoints.http.address=:80"
+      - "--entryPoints.http.forwardedHeaders.trustedIPs=127.0.0.1/32,${TRAEFIK_CONF_VLAN_INFRA}.100"
+      - "--entrypoints.https.address=:443"
+      - "--entryPoints.https.forwardedHeaders.trustedIPs=127.0.0.1/32,${TRAEFIK_CONF_VLAN_INFRA}.100"
+      - "--entrypoints.prometheus.address=:9090"
+      - "--entrypoints.registry.address=:5000"
+      - "--entrypoints.smb137.address=:137/udp"
+      - "--entrypoints.smb138.address=:138/udp"
+      - "--entrypoints.smb139.address=:139"
+      - "--entrypoints.smb445.address=:445"
+      - "--entrypoints.nfs.address=:2049"
+      - "--entrypoints.gitlab.address=:2222"
+      - "--entrypoints.loki.address=:3100"
+      - "--entrypoints.nodeexporter.address=:9100"
+      - "--entryPoints.nodeexporter.transport.respondingTimeouts.readTimeout=0"
+      - "--entrypoints.cadvisor.address=:8080"
+      - "--providers.docker.endpoint=unix:///var/run/docker.sock"
+      - "--providers.docker.exposedByDefault=false"
+      - "--providers.file.filename=/etc/traefik/dynamic_conf.yml"
+      - "--certificatesresolvers.cloudflare.acme.email=${EMAIL_ME}"
+      - "--certificatesresolvers.cloudflare.acme.storage=/etc/traefik/acme.json"
+      - "--certificatesresolvers.cloudflare.acme.dnschallenge.provider=cloudflare"
+      - "--certificatesresolvers.cloudflare.acme.dnschallenge.resolvers=1.1.1.1:53,8.8.8.8:53"
+      - "--serverstransport.insecureskipverify=true"
+    volumes:
+      - '/var/run/docker.sock:/var/run/docker.sock:ro'
+      - '/etc/localtime:/etc/localtime:ro'
+      - '/data/bindmounts/traefik:/etc/traefik/'
+    networks: {web: {ipv4_address: "172.21.0.104"}}
+    dns: ["192.168.0.1"]
+    ports:
+      - '443:443/tcp' # http
+      - '80:80/tcp'   # https
+      - '9100:9100'   # node exporter
+      - '8080:8080'   # cadvisor
+      - '2222:2222'   # gitlab ssh
+      - '9090:9090'   # prometheus
+      - '3100:3100'   # loki
+      - "137:137/udp" # smb
+      - "138:138/udp" # smb
+      - "139:139"     # smb
+      - "445:445"     # smb
+    privileged: true
+    labels:
+    # Traefik
+      - traefik.enable=true
+      - traefik.http.routers.traefik010.entrypoints=http
+      - traefik.http.routers.traefik010.rule=Host(`traefik010.${DOMAIN}`)
+      - traefik.http.middlewares.traefik010-https-redirect.redirectscheme.scheme=https
+      - traefik.http.routers.traefik010.middlewares=traefik010-https-redirect
+      #Secure
+      - traefik.http.routers.traefik010-secure.entrypoints=https
+      - traefik.http.routers.traefik010-secure.rule=Host(`traefik010.${DOMAIN}`)
+      - traefik.http.routers.traefik010-secure.tls=true
+      - traefik.http.routers.traefik010-secure.tls.certresolver=cloudflare
+      - 'traefik.http.routers.traefik010-secure.tls.domains[0].main=lifeispain.org'
+      - 'traefik.http.routers.traefik010-secure.tls.domains[0].sans=*.lifeispain.org'
+      - 'traefik.http.routers.traefik010-secure.tls.domains[1].main=${DOMAIN}'
+      - 'traefik.http.routers.traefik010-secure.tls.domains[1].sans=*.${DOMAIN}'
+      - traefik.http.routers.traefik010-secure.service=api@internal
+      #Provider
+      - providers.file=true
+      - providers.file.filename=/etc/traefik/app/dynamic_conf.yml
+      - providers.file.watch=true
+      # Watchtower
+      - "com.centurylinklabs.watchtower.enable=true"
+    extra_hosts:
+      - host.docker.internal:172.17.0.1
+    restart: unless-stopped
+
+  node_exporter121:
+    image: quay.io/prometheus/node-exporter:latest
+    container_name: node_exporter121
+    hostname: nodeexplorer.${DOMAIN}
+    volumes:
+      - '/:/host:ro,rslave'
+      - '/etc/localtime:/etc/localtime:ro'
+    dns: ["192.168.0.1"]
+    network_mode: web
+    command:
+      - '--path.rootfs=/host'
+    pid: host
+    restart: unless-stopped
+    labels:
+    # Traefik
+      - traefik.enable=true
+      - traefik.tcp.routers.nodeexporter.entrypoints=nodeexporter
+      - "traefik.tcp.routers.nodeexporter.rule=HostSNI(`*`)"
+      - "traefik.tcp.routers.nodeexporter.service=nodeexporter"
+      - traefik.tcp.services.nodeexporter.loadbalancer.server.port=9100
+    # Watchtower
+      - "com.centurylinklabs.watchtower.enable=true"
+
+  cadvisor121:
+    image: gcr.io/cadvisor/cadvisor:v0.45.0
+    container_name: cadvisor121
+    hostname: cadvisor.${DOMAIN}
+    dns: ["192.168.0.1"]
+    network_mode: web
+    volumes:
+      - '/:/rootfs:ro'
+      - '/var/run:/var/run:ro'
+      - '/sys:/sys:ro'
+      - '/var/lib/docker/:/var/lib/docker:ro'
+      - '/dev/disk/:/dev/disk:ro'
+      - '/etc/localtime:/etc/localtime:ro'
+    devices:
+      - /dev/kmsg
+    restart: unless-stopped
+    privileged: true
+    labels:
+    # Traefik
+      - traefik.enable=true
+      - traefik.tcp.routers.cadvisor.entrypoints=cadvisor
+      - "traefik.tcp.routers.cadvisor.rule=HostSNI(`*`)"
+      - "traefik.tcp.routers.cadvisor.service=cadvisor"
+      - traefik.tcp.services.cadvisor.loadbalancer.server.port=8080
+    # Watchtower
+      - "com.centurylinklabs.watchtower.enable=true"
+
+  promtail121:
+    image: grafana/promtail:latest
+    container_name: promtail121
+    hostname: promtail121.${DOMAIN}
+    volumes:
+      - '/var/lib/docker/containers:/var/lib/docker/containers:ro'
+      - '/var/run/docker.sock:/var/run/docker.sock'
+      - '/data/bindmounts/promtail/config:/etc/promtail'
+      - '/var/log:/var/log'
+      - '/etc/localtime:/etc/localtime:ro'
+    command: -config.file=/etc/promtail/config.yml
+    dns: ["192.168.0.1"]
+    network_mode: web
+    restart: unless-stopped
+    labels:
+    # Watchtower
+      - "com.centurylinklabs.watchtower.enable=true"
+
+### Patchmanagement ###
+
+  watchtower:
+    image: containrrr/watchtower
+    container_name: watchtower
+    environment:
+      - WATCHTOWER_CLEANUP=true
+      - WATCHTOWER_DEBUG=true
+      - WATCHTOWER_INCLUDE_RESTARTING=true
+      - WATCHTOWER_LABEL_ENABLE=true
+      - WATCHTOWER_NOTIFICATIONS_LEVEL=info
+      - WATCHTOWER_SCHEDULE=0 0 0 1 * *
+      - WATCHTOWER_CLEANUP=true
+      - WATCHTOWER_INCLUDE_RESTARTING=true
+      - WATCHTOWER_ROLLING_RESTART=true
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock
+      - /etc/localtime:/etc/localtime:ro
+    dns: ["192.168.0.1"]
+    network_mode: web
+    labels:
+    # Watchtower
+      - "com.centurylinklabs.watchtower.enable=true"
+
+### DevOps ###
+
+  gitlab:
+    image: 'gitlab/gitlab-ce:latest'
+    container_name: gitlab
+    hostname: git.${DOMAIN}
+    environment:
+      GITLAB_OMNIBUS_CONFIG: |
+        external_url 'http://git.${DOMAIN}'
+    volumes:
+      - '/data/bindmounts/gitlab/config:/etc/gitlab'
+      - '/data/bindmounts/gitlab/logs:/var/log/gitlab'
+      - '/data/bindmounts/gitlab/data:/var/opt/gitlab'
+    dns: ["192.168.0.1"]
+    network_mode: web
+    restart: always
+    labels:
+    # Traefik
+      - traefik.enable=true
+      - traefik.http.routers.git.entrypoints=http
+      - traefik.http.routers.git.rule=Host(`git.${DOMAIN}`)
+      - traefik.http.routers.git.middlewares=traefik010-https-redirect
+      - traefik.http.routers.git-secure.entrypoints=https
+      - traefik.http.routers.git-secure.rule=Host(`git.${DOMAIN}`)
+      - traefik.http.routers.git-secure.tls=true
+      - traefik.http.routers.git-secure.service=git
+      - traefik.http.services.git.loadbalancer.server.port=80
+      # ssh
+      - traefik.tcp.routers.gitssh.entrypoints=gitlab
+      - "traefik.tcp.routers.gitssh.rule=HostSNI(`*`)"
+      - "traefik.tcp.routers.gitssh.service=gitssh"
+      - traefik.tcp.services.gitssh.loadbalancer.server.port=22
+    # Watchtower
+      - "com.centurylinklabs.watchtower.enable=true"
+
+  glrun01:
+    image: gitlab/gitlab-runner:latest
+    container_name: glrun01
+    hostname: glrun01.${DOMAIN}
+    network_mode: web
+    dns: ["192.168.0.1"]
+    volumes:
+      - '/data/bindmounts/gitlab/runner/glrun01:/etc/gitlab-runner/'
+      - '/var/run/docker.sock:/var/run/docker.sock'
+    restart: always
+
+  glrun02:
+    image: gitlab/gitlab-runner:latest
+    container_name: glrun02
+    hostname: glrun02.${DOMAIN}
+    network_mode: web
+    dns: ["192.168.0.1"]
+    volumes:
+      - '/data/bindmounts/gitlab/runner/glrun02:/etc/gitlab-runner/'
+      - '/var/run/docker.sock:/var/run/docker.sock'
+    restart: always
+
+  glrun03:
+    image: gitlab/gitlab-runner:latest
+    container_name: glrun03
+    hostname: glrun03.${DOMAIN}
+    network_mode: web
+    dns: ["192.168.0.1"]
+    volumes:
+      - '/data/bindmounts/gitlab/runner/glrun03:/etc/gitlab-runner/'
+      - '/var/run/docker.sock:/var/run/docker.sock'
+    restart: always
+
+  glrun10:
+    image: gitlab/gitlab-runner:latest
+    container_name: glrun10
+    hostname: glrun10.${DOMAIN}
+    network_mode: web
+    dns: ["192.168.0.1"]
+    volumes:
+      - '/data/bindmounts/gitlab/runner/glrun10:/etc/gitlab-runner/'
+      - '/var/run/docker.sock:/var/run/docker.sock'
+    restart: always
+
+  registry:
+    image: registry:2
+    container_name: registry
+    hostname: registry.${DOMAIN}
+    environment:
+      REGISTRY_STORAGE_FILESYSTEM_ROOTDIRECTORY: /data
+      REGISTRY_STORAGE_DELETE_ENABLED: true
+      REGISTRY_AUTH: htpasswd
+      REGISTRY_AUTH_HTPASSWD_REALM: "Registry Realm"
+      REGISTRY_AUTH_HTPASSWD_PATH: "/auth/htpasswd"
+    network_mode: web
+    dns: ["192.168.0.1"]
+    volumes:
+      - '/data/bindmounts/registry/data:/data'
+      - '/data/bindmounts/registry/auth:/auth'
+    restart: unless-stopped
+    labels:
+    # Traefik
+      - traefik.enable=true
+      - traefik.http.routers.registry.entrypoints=http
+      - traefik.http.routers.registry.rule=Host(`registry.${DOMAIN}`)
+      - traefik.http.routers.registry.service=registry
+      - traefik.http.routers.registry.middlewares=traefik010-https-redirect
+      - traefik.http.routers.registry-secure.entrypoints=https
+      - traefik.http.routers.registry-secure.rule=Host(`registry.${DOMAIN}`)
+      - traefik.http.routers.registry-secure.tls=true
+      - traefik.http.routers.registry-secure.service=registry
+      - traefik.http.services.registry.loadbalancer.server.port=5000
+    # Watchtower
+      - "com.centurylinklabs.watchtower.enable=true"
+  # Notes
+  # Show repos: https://registry.${DOMAIN}/v2/_catalog
+
+  registryUi:
+    image: joxit/docker-registry-ui:main
+    container_name: registryUi
+    hostname: registryui.${DOMAIN}
+    environment:
+      - SINGLE_REGISTRY=true
+      - REGISTRY_TITLE=Docker Registry UI
+      - DELETE_IMAGES=true
+      - SHOW_CONTENT_DIGEST=true
+      - NGINX_PROXY_PASS_URL=http://registry:5000
+      - SHOW_CATALOG_NB_TAGS=true
+      - CATALOG_MIN_BRANCHES=1
+      - CATALOG_MAX_BRANCHES=1
+      - TAGLIST_PAGE_SIZE=100
+      - REGISTRY_SECURED=false
+      - CATALOG_ELEMENTS_LIMIT=1000
+    network_mode: web
+    dns: ["192.168.0.1"]
+    restart: always
+    labels:
+    # Traefik
+      - traefik.enable=true
+      - traefik.http.routers.registryui.entrypoints=http
+      - traefik.http.routers.registryui.rule=Host(`registryui.${DOMAIN}`)
+      - traefik.http.routers.registryui.service=registryui
+      - traefik.http.routers.registryui.middlewares=traefik010-https-redirect
+      - traefik.http.routers.registryui-secure.entrypoints=https
+      - traefik.http.routers.registryui-secure.rule=Host(`registryui.${DOMAIN}`)
+      - traefik.http.routers.registryui-secure.tls=true
+      - traefik.http.routers.registryui-secure.service=registryui
+      - traefik.http.services.registryui.loadbalancer.server.port=80
+    # Watchtower
+      - "com.centurylinklabs.watchtower.enable=true"
+
+### Storage ###
+
+  samba:
+    image: dperson/samba
+    container_name: smb
+    hostname: smb.${DOMAIN}
+    environment:
+      TZ: 'Europe/Berlin'
+    dns: ["192.168.0.1"]
+    network_mode: web
+    read_only: true
+    tmpfs:
+      - /tmp
+    stdin_open: true
+    tty: true
+    volumes:
+      - '/data/shares/tfbasestate:/mnt/data/tfbasestate:z'
+      - '/data/shares/backups:/mnt/data/backups:z'
+    command: '-s "tfbasestate;/mnt/data/tfbasestate;yes;no;no;nodes" -s "backups;/mnt/data/backups;yes;no;no;nodes" -u "${SMB_BACKUP_USER};${SMB_BACKUP_PW}" -p'
+    restart: unless-stopped
+    labels:
+    # Traefik
+      - traefik.enable=true
+      - traefik.tcp.routers.smb445.entrypoints=smb445
+      - "traefik.tcp.routers.smb445.rule=HostSNI(`*`)"
+      - "traefik.tcp.routers.smb445.service=smb445"
+      - traefik.tcp.services.smb445.loadbalancer.server.port=445
+      - traefik.tcp.routers.smb139.entrypoints=smb139
+      - "traefik.tcp.routers.smb139.rule=HostSNI(`*`)"
+      - "traefik.tcp.routers.smb139.service=smb139"
+      - traefik.tcp.services.smb139.loadbalancer.server.port=139
+      - traefik.udp.routers.smb137.entrypoints=smb137
+      - "traefik.udp.routers.smb137.service=smb137"
+      - traefik.udp.services.smb137.loadbalancer.server.port=137
+      - traefik.udp.routers.smb138.entrypoints=smb138
+      - "traefik.udp.routers.smb138.service=smb138"
+      - traefik.udp.services.smb138.loadbalancer.server.port=138
+    # Watchtower
+      - "com.centurylinklabs.watchtower.enable=true"
+
+networks:
+  web:
+    driver: bridge
+    name: web
+    ipam:
+      driver: default
+      config:
+        - subnet: "172.21.0.0/16"
