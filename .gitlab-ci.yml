@@ -31,6 +31,8 @@ install_docker:
       export PROXMOX_TOKEN_ID=$PROXMOX_TOKEN_ID
       export PROXMOX_TOKEN_SECRET=$PROXMOX_TOKEN_SECRET
 
+      ansible-galaxy install -r ${CI_BUILDS_DIR}/${CI_PROJECT_NAMESPACE}/${CI_PROJECT_NAME}/collections/requirements.yml --roles-path ${CI_BUILDS_DIR}/${CI_PROJECT_NAMESPACE}/${CI_PROJECT_NAME}/roles
+
       ANSIBLE_CONFIG=/${CI_BUILDS_DIR}/${CI_PROJECT_NAMESPACE}/${CI_PROJECT_NAME}/ansible.cfg ansible-playbook playbooks/main.yml -i inventory
 
 send_notification:
