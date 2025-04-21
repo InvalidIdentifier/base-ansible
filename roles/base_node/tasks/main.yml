@@ -1,7 +1,7 @@
 ---
 # install NFS server
 - name: install nfs-kernel-server
-  apt:
+  ansible.builtin.apt:
     name: nfs-kernel-server
     state: present
     update_cache: yes
@@ -9,14 +9,14 @@
 
 # create export directory for NFS
 - name: create NFS export directory
-  file:
+  ansible.builtin.file:
     path: /mnt/raid/nfs_share
     state: directory
     mode: '0777'
 
 # configure NFS export
 - name: configure /etc/exports for NFS share
-  lineinfile:
+  ansible.builtin.lineinfile:
     path: /etc/exports
     line: "/mnt/raid/nfs_share {{ vlan_infra }}.0/24(rw,sync,no_subtree_check,no_root_squash)"
     create: yes
@@ -25,21 +25,21 @@
 
 # enable and start NFS server
 - name: enable and start nfs-server
-  systemd:
+  ansible.builtin.systemd_service:
     name: nfs-server
     enabled: true
     state: started
 
 # create directory for bindmount folders
 - name: create directory bindmounts
-  file:
+  ansible.builtin.file:
     path: /data/bindmounts
     state: directory
     mode: '0755'
 
 # create directories for bindmount
 - name: create bindmount directories
-  file:
+  ansible.builtin.file:
     path: "{{ item }}"
     state: directory
     mode: '0755'
@@ -51,14 +51,14 @@
 
 # create directory for bindmount folders
 - name: create directory bindmounts
-  file:
+  ansible.builtin.file:
     path: /data/bindmounts/gitlab/runner
     state: directory
     mode: '0755'
 
 # create subdirectories
 - name: create bindmount subdirectories
-  file:
+  ansible.builtin.file:
     path: "{{ item }}"
     state: directory
     mode: '0755'
@@ -71,49 +71,49 @@
 
 # copy glrun01 config
 - name: copy config for glrun01
-  template:
+  ansible.builtin.template:
     src: glr01_config.toml.j2
     dest: /data/bindmounts/gitlab/runner/glrun01/glr01_config.toml
 
 # copy glrun02 config
 - name: copy config for glrun01
-  template:
+  ansible.builtin.template:
     src: glr02_config.toml.j2
     dest: /data/bindmounts/gitlab/runner/glrun02/glr02_config.toml
 
 # copy glrun03 config
 - name: copy config for glrun01
-  template:
+  ansible.builtin.template:
     src: glr03_config.toml.j2
     dest: /data/bindmounts/gitlab/runner/glrun03/glr03_config.toml
 
 # copy glrun10 config
 - name: copy config for glrun01
-  template:
+  ansible.builtin.template:
     src: glr10_config.toml.j2
     dest: /data/bindmounts/gitlab/runner/glrun10/glr10_config.toml
 
 # copy registry auth
 - name: copy auth config registry
-  template:
+  ansible.builtin.template:
     src: htpasswd.j2
     dest: /data/bindmounts/registry/auth/htpasswd
 
 # copy promtail config
 - name: copy config for promtail
-  template:
+  ansible.builtin.template:
     src: config.yml.j2
     dest: /data/bindmounts/promtail/config.yml
 
 # copy traefik config
 - name: copy config for traefik
-  template:
+  ansible.builtin.template:
     src: dynamic_conf.yml.j2
     dest: /data/bindmounts/traefik/dynamic_conf.yml
 
 # copy docker-compose.yml
 - name: copy docker-compose.yml
-  template:
+  ansible.builtin.template:
     src: docker-compose.yml.j2
     dest: /home/user/docker-compose.yml
 
@@ -125,5 +125,5 @@
 
 # run docker container
 - name: start containers
-  command: docker compose up -d --remove-orphans
+  ansible.builtin.command: docker compose up -d --remove-orphans
 ...
