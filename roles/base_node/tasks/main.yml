@@ -8,11 +8,14 @@
   become: true
 
 # create export directory for NFS
-- name: create NFS export directory
+- name: create NFS export directory and subdirs
   ansible.builtin.file:
-    path: /mnt/raid/nfs_share
+    path: "{{ item }}"
     state: directory
     mode: '0777'
+  loop:
+    - /mnt/raid/nfs_share
+    - /mnt/raid/nfs_share/backups
 
 # configure NFS export
 - name: configure /etc/exports for NFS share
@@ -69,29 +72,16 @@
     - /data/bindmounts/gitlab/runner/glrun10
     - /data/bindmounts/registry/auth
 
-# copy glrun01 config
-- name: copy config for glrun01
+# configure gitlab runners
+- name: configure GitLab Runner {{ item.name }}
   ansible.builtin.template:
-    src: glr01_config.toml.j2
-    dest: /data/bindmounts/gitlab/runner/glrun01/glr01_config.toml
-
-# copy glrun02 config
-- name: copy config for glrun01
-  ansible.builtin.template:
-    src: glr02_config.toml.j2
-    dest: /data/bindmounts/gitlab/runner/glrun02/glr02_config.toml
-
-# copy glrun03 config
-- name: copy config for glrun01
-  ansible.builtin.template:
-    src: glr03_config.toml.j2
-    dest: /data/bindmounts/gitlab/runner/glrun03/glr03_config.toml
-
-# copy glrun10 config
-- name: copy config for glrun01
-  ansible.builtin.template:
-    src: glr10_config.toml.j2
-    dest: /data/bindmounts/gitlab/runner/glrun10/glr10_config.toml
+    src: "glr{{ item.id }}_config.toml.j2"
+    dest: "/data/bindmounts/gitlab/runner/glrun{{ item.id }}/glr{{ item.id }}_config.toml"
+  loop:
+    - { name: "Runner 1", id: "01" }
+    - { name: "Runner 2", id: "02" }
+    - { name: "Runner 3", id: "03" }
+    - { name: "Runner 10", id: "10" }
 
 # copy registry auth
 - name: copy auth config registry
@@ -126,4 +116,9 @@
 # run docker container
 - name: start containers
   ansible.builtin.command: docker compose up -d --remove-orphans
+  register: docker_result
+  retries: 3
+  delay: 5
+  until: docker_result.rc == 0
+  failed_when: docker_result.rc != 0 and "already running" not in docker_result.stderr
 ...
