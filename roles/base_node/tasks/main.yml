@@ -51,15 +51,37 @@
     - /data/bindmounts/promtail
     - /data/bindmounts/registry
     - /data/bindmounts/traefik
+    - /data/bindmounts/forgejo
 
-# create directory for bindmount folders
+# create directory for forgejo-runner folders
+- name: create directory bindmounts
+  ansible.builtin.file:
+    path: /data/bindmounts/forgejo/runner
+    state: directory
+    mode: '0755'
+
+# create subdirectories for gitlab runners
+- name: create bindmount subdirectories
+  ansible.builtin.file:
+    path: "{{ item }}"
+    state: directory
+    mode: '0755'
+    owner: 'user'
+    group: 'user'
+  loop:
+    - /data/bindmounts/forgejo/runner/01
+    - /data/bindmounts/forgejo/runner/02
+    - /data/bindmounts/forgejo/runner/03
+    - /data/bindmounts/forgejo/runner/10
+
+# create directory for gitlab-runner folders
 - name: create directory bindmounts
   ansible.builtin.file:
     path: /data/bindmounts/gitlab/runner
     state: directory
     mode: '0755'
 
-# create subdirectories
+# create subdirectories for gitlab runners
 - name: create bindmount subdirectories
   ansible.builtin.file:
     path: "{{ item }}"

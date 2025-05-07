@@ -383,6 +383,82 @@ services:
     network_mode: web
     restart: always
 
+  forge-dind:
+    image: docker:dind
+    container_name: 'forge-dind'
+    network_mode: web
+    privileged: 'true'
+    command: ['dockerd', '-H', 'tcp://0.0.0.0:2375', '--tls=false']
+    restart: 'unless-stopped'
+
+  forgejo-runner-01:
+    image: 'data.forgejo.org/forgejo/runner:6.3.1'
+    links:
+      - forge-dind
+    depends_on:
+      forge-dind:
+        condition: service_started
+    container_name: 'forgejo-runner-01'
+    environment:
+      DOCKER_HOST: tcp://forge-dind:2375
+    user: 1001:1001
+    dns: ["192.168.0.1"]
+    network_mode: web
+    volumes:
+      - '/data/bindmounts/forgejo/runner/01/data:/data
+    restart: 'unless-stopped'
+
+  forgejo-runner-02:
+    image: 'data.forgejo.org/forgejo/runner:6.3.1'
+    links:
+      - forge-dind
+    depends_on:
+      forge-dind:
+        condition: service_started
+    container_name: 'forgejo-runner-02'
+    environment:
+      DOCKER_HOST: tcp://forge-dind:2375
+    user: 1001:1001
+    dns: ["192.168.0.1"]
+    network_mode: web
+    volumes:
+      - '/data/bindmounts/forgejo/runner/02/data:/data
+    restart: 'unless-stopped'
+
+  forgejo-runner-03:
+    image: 'data.forgejo.org/forgejo/runner:6.3.1'
+    links:
+      - forge-dind
+    depends_on:
+      forge-dind:
+        condition: service_started
+    container_name: 'forgejo-runner-03'
+    environment:
+      DOCKER_HOST: tcp://forge-dind:2375
+    user: 1001:1001
+    dns: ["192.168.0.1"]
+    network_mode: web
+    volumes:
+      - '/data/bindmounts/forgejo/runner/03/data:/data
+    restart: 'unless-stopped'
+
+  forgejo-runner-10:
+    image: 'data.forgejo.org/forgejo/runner:6.3.1'
+    links:
+      - forge-dind
+    depends_on:
+      forge-dind:
+        condition: service_started
+    container_name: 'forgejo-runner-10'
+    environment:
+      DOCKER_HOST: tcp://forge-dind:2375
+    user: 1001:1001
+    dns: ["192.168.0.1"]
+    network_mode: web
+    volumes:
+      - '/data/bindmounts/forgejo/runner/10/data:/data
+    restart: 'unless-stopped'
+
 ### Storage ###
 
   samba:
