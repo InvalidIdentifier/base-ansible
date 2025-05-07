@@ -407,7 +407,7 @@ services:
     volumes:
       - '/data/bindmounts/forgejo/runner/01/data:/data'
     restart: 'unless-stopped'
-    command: '/bin/sh -c "while : ; do sleep 1 ; done ;"'
+    command: '/bin/sh -c "sleep 5; forgejo-runner daemon"'
 
   forgejo-runner-02:
     image: 'data.forgejo.org/forgejo/runner:6.3.1'
