@@ -67,7 +67,7 @@
     state: directory
     mode: '0755'
     owner: 'user'
-    group: 'user'
+    group: 'docker'
   loop:
     - /data/bindmounts/forgejo/runner/01
     - /data/bindmounts/forgejo/runner/02
