@@ -74,6 +74,17 @@
     - /data/bindmounts/forgejo/runner/03
     - /data/bindmounts/forgejo/runner/10
 
+# configure gitlab runners
+- name: configure forgejo runner {{ item.name }}
+  ansible.builtin.template:
+    src: "forge_runner_{{ item.id }}_dotfile.j2"
+    dest: "/data/bindmounts/forgejo/runner/{{ item.id }}/data/.runner"
+  loop:
+    - { name: "runner_01", id: "01" }
+    - { name: "runner_02", id: "02" }
+    - { name: "runner_03", id: "03" }
+    - { name: "runner_10", id: "10" }
+
 # create directory for gitlab-runner folders
 - name: create directory bindmounts
   ansible.builtin.file:
