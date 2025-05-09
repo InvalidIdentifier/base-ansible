@@ -388,14 +388,14 @@ services:
     container_name: 'forgejo-dind'
     environment:
       - REGISTRY_USER=${REGISTRY_USER}
-      - REGISTRY_PASS=${REGISTRY_PASSWD}
+      - REGISTRY_PASSWD=${REGISTRY_PASSWD}
       - DOMAIN=${DOMAIN}
     network_mode: web
     privileged: 'true'
     command: >
       /bin/sh -c "
         mkdir -p /root/.docker &&
-        echo '{\"auths\": {\"registry.${DOMAIN}\": {\"auth\": \"'$(echo -n $REGISTRY_USER:$REGISTRY_PASS | base64)'\"}}}' > /root/.docker/config.json &&
+        echo '{\"auths\": {\"registry.${DOMAIN}\": {\"auth\": \"'$(echo -n $REGISTRY_USER:$REGISTRY_PASSWD | base64)'\"}}}' > /root/.docker/config.json &&
         dockerd -H tcp://0.0.0.0:2375 --tls=false"
     restart: 'unless-stopped'
 
@@ -417,59 +417,59 @@ services:
     restart: 'unless-stopped'
     command: '/bin/sh -c "sleep 5; forgejo-runner daemon"'
 
-  forgejo-runner-02:
-    image: 'data.forgejo.org/forgejo/runner:6.3.1'
-    links:
-      - forgejo-dind
-    depends_on:
-      forgejo-dind:
-        condition: service_started
-    container_name: 'forgejo-runner-02'
-    environment:
-      DOCKER_HOST: tcp://forgejo-dind:2375
-    user: 1000:996
-    dns: ["192.168.0.1"]
-    network_mode: web
-    volumes:
-      - '/data/bindmounts/forgejo/runner/02/data:/data'
-    restart: 'unless-stopped'
-    command: '/bin/sh -c "sleep 5; forgejo-runner daemon"'
+#  forgejo-runner-02:
+#    image: 'data.forgejo.org/forgejo/runner:6.3.1'
+#    links:
+#      - forgejo-dind
+#    depends_on:
+#      forgejo-dind:
+#        condition: service_started
+#    container_name: 'forgejo-runner-02'
+#    environment:
+#      DOCKER_HOST: tcp://forgejo-dind:2375
+#    user: 1000:996
+#    dns: ["192.168.0.1"]
+#    network_mode: web
+#    volumes:
+#      - '/data/bindmounts/forgejo/runner/02/data:/data'
+#    restart: 'unless-stopped'
+#    command: '/bin/sh -c "sleep 5; forgejo-runner daemon"'
 
-  forgejo-runner-03:
-    image: 'data.forgejo.org/forgejo/runner:6.3.1'
-    links:
-      - forgejo-dind
-    depends_on:
-      forgejo-dind:
-        condition: service_started
-    container_name: 'forgejo-runner-03'
-    environment:
-      DOCKER_HOST: tcp://forgejo-dind:2375
-    user: 1000:996
-    dns: ["192.168.0.1"]
-    network_mode: web
-    volumes:
-      - '/data/bindmounts/forgejo/runner/03/data:/data'
-    restart: 'unless-stopped'
-    command: '/bin/sh -c "sleep 5; forgejo-runner daemon"'
+#  forgejo-runner-03:
+#    image: 'data.forgejo.org/forgejo/runner:6.3.1'
+#    links:
+#      - forgejo-dind
+#    depends_on:
+#      forgejo-dind:
+#        condition: service_started
+#    container_name: 'forgejo-runner-03'
+#    environment:
+#      DOCKER_HOST: tcp://forgejo-dind:2375
+#    user: 1000:996
+#    dns: ["192.168.0.1"]
+#    network_mode: web
+#    volumes:
+#      - '/data/bindmounts/forgejo/runner/03/data:/data'
+#    restart: 'unless-stopped'
+#    command: '/bin/sh -c "sleep 5; forgejo-runner daemon"'
 
-  forgejo-runner-10:
-    image: 'data.forgejo.org/forgejo/runner:6.3.1'
-    links:
-      - forgejo-dind
-    depends_on:
-      forgejo-dind:
-        condition: service_started
-    container_name: 'forgejo-runner-10'
-    environment:
-      DOCKER_HOST: tcp://forgejo-dind:2375
-    user: 1000:996
-    dns: ["192.168.0.1"]
-    network_mode: web
-    volumes:
-      - '/data/bindmounts/forgejo/runner/10/data:/data'
-    restart: 'unless-stopped'
-    command: '/bin/sh -c "sleep 5; forgejo-runner daemon"'
+#  forgejo-runner-10:
+#    image: 'data.forgejo.org/forgejo/runner:6.3.1'
+#    links:
+#      - forgejo-dind
+#    depends_on:
+#      forgejo-dind:
+#        condition: service_started
+#    container_name: 'forgejo-runner-10'
+#    environment:
+#      DOCKER_HOST: tcp://forgejo-dind:2375
+#    user: 1000:996
+#    dns: ["192.168.0.1"]
+#    network_mode: web
+#    volumes:
+#      - '/data/bindmounts/forgejo/runner/10/data:/data'
+#    restart: 'unless-stopped'
+#    command: '/bin/sh -c "sleep 5; forgejo-runner daemon"'
 
 ### Storage ###
 
