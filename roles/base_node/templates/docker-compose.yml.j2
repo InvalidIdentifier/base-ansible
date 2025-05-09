@@ -386,9 +386,17 @@ services:
   forgejo-dind:
     image: docker:dind
     container_name: 'forgejo-dind'
+    environment:
+      - REGISTRY_USER=${REGISTRY_USER}
+      - REGISTRY_PASS=${REGISTRY_PASSWD}
+      - DOMAIN=${DOMAIN}
     network_mode: web
     privileged: 'true'
-    command: ['dockerd', '-H', 'tcp://0.0.0.0:2375', '--tls=false']
+    command: >
+      /bin/sh -c "
+        mkdir -p /root/.docker &&
+        echo '{\"auths\": {\"registry.${DOMAIN}\": {\"auth\": \"'$(echo -n $REGISTRY_USER:$REGISTRY_PASS | base64)'\"}}}' > /root/.docker/config.json &&
+        dockerd -H tcp://0.0.0.0:2375 --tls=false"
     restart: 'unless-stopped'
 
   forgejo-runner-01:
