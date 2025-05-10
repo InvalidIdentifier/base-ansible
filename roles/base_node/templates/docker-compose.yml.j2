@@ -387,6 +387,8 @@ services:
     image: docker:dind
     container_name: 'docker_dind'
     privileged: 'true'
+    dns: ["192.168.0.1"]
+    network_mode: web
     command: ['dockerd', '-H', 'tcp://0.0.0.0:2375', '--tls=false']
     restart: 'unless-stopped'
 
@@ -397,7 +399,9 @@ services:
     depends_on:
       docker-in-docker:
         condition: service_started
-    container_name: 'runner'
+    container_name: 'forgejo-runner-01'
+    dns: ["192.168.0.1"]
+    network_mode: web
     environment:
       DOCKER_HOST: tcp://docker-in-docker:2375
     # User without root privileges, but with access to `./data`.
